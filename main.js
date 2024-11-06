@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const scene = new THREE.Scene();
@@ -7,72 +8,94 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Maak een deur (rechthoekige doos)
-const doorGeometry = new THREE.BoxGeometry(1, 3, 0.1); // Breedte, hoogte, diepte
-const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 }); // Houtkleur
+// Stel de achtergrondkleur in
+renderer.setClearColor(0x87ceeb); // Lichtblauwe achtergrond
+
+// Maak het huis (kubusvormige structuur)
+const houseGeometry = new THREE.BoxGeometry(6, 4, 6);
+const houseMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+const house = new THREE.Mesh(houseGeometry, houseMaterial);
+scene.add(house);
+house.position.y = 2; // Zet het huis op een kleine hoogte
+
+// Maak de deur (rechthoekige doos)
+const doorGeometry = new THREE.BoxGeometry(1, 2, 0.1);
+const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
 const door = new THREE.Mesh(doorGeometry, doorMaterial);
 scene.add(door);
-
-// Plaats de deur in de scène
-door.position.set(0, 1.5, 0); // Zet de deur op een hoogte van 1.5 (midden van de deur)
+door.position.set(0, 1, 3.05); // Plaats de deur voor het huis
 
 // Camera instellingen
-camera.position.z = 5;
+camera.position.z = 10;
 
 // Voeg lichten toe voor een mooier effect
-const ambientLight = new THREE.AmbientLight(0x404040, 1); // Zacht omgevingslicht
+const ambientLight = new THREE.AmbientLight(0x404040, 1);
 scene.add(ambientLight);
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Sterk licht
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(5, 5, 5);
 scene.add(directionalLight);
 
 // OrbitControls voor beweging van de camera
 const controls = new OrbitControls(camera, renderer.domElement);
 
-// Animatie functie
-let doorOpen = false; // Variabele om bij te houden of de deur open of dicht is
-const openAngle = Math.PI / 2; // Hoe ver de deur opent (90 graden)
-const closeAngle = 0; // Deur in gesloten positie (0 graden)
+// Laad de tafel met GLTFLoader
+const loader = new GLTFLoader();
+loader.load(
+	new URL("../3DObject/public/Tabel.gltf/table.gltf", import.meta.url).href,
+	(gltf) => {
+		const table = gltf.scene;
+		table.position.set(2, 0);
+		table.scale.set(1, 1, 1);
+		scene.add(table);
+	},
+	undefined,
+	(error) => {
+		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
+	}
+);
 
-// Functie om de deur te openen of te sluiten
+// Animatie en interactie met deur
+let doorOpen = false;
+const openAngle = Math.PI / 2;
+const closeAngle = 0;
+
 function toggleDoor() {
-	doorOpen = !doorOpen; // Wisselt de status van de deur (open/dicht)
+	doorOpen = !doorOpen;
 }
 
-// Detectie van muisklik
-window.addEventListener("click", () => {
-	toggleDoor(); // Open of sluit de deur bij klik
+// Detectie van muisklik op de deur
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener("click", (event) => {
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+	mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+	raycaster.setFromCamera(mouse, camera);
+	const intersects = raycaster.intersectObject(door);
+	if (intersects.length > 0) {
+		toggleDoor();
+	}
 });
 
-// Animatie functie voor de deur
 function animate() {
 	requestAnimationFrame(animate);
-
-	// Draai de deur open of dicht, afhankelijk van de status
 	if (doorOpen) {
 		if (door.rotation.y < openAngle) {
-			door.rotation.y += 0.05; // De deur opent langzaam
+			door.rotation.y += 0.05;
 		}
 	} else {
 		if (door.rotation.y > closeAngle) {
-			door.rotation.y -= 0.05; // De deur sluit langzaam
+			door.rotation.y -= 0.05;
 		}
 	}
-
-	// Update orbit controls
 	controls.update();
-
-	// Render de scène
 	renderer.render(scene, camera);
 }
 
 animate();
 
-// Eventlistener om de deur ook te openen/sluiten met een toets
 window.addEventListener("keydown", (event) => {
 	if (event.key === " ") {
-		// Spatiebalk om de deur te openen of te sluiten
 		toggleDoor();
 	}
 });
