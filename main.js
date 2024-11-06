@@ -9,21 +9,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Stel de achtergrondkleur in
-renderer.setClearColor(0x87ceeb); // Lichtblauwe achtergrond
-
-// Maak het huis (kubusvormige structuur)
-const houseGeometry = new THREE.BoxGeometry(6, 4, 6);
-const houseMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const house = new THREE.Mesh(houseGeometry, houseMaterial);
-scene.add(house);
-house.position.y = 2; // Zet het huis op een kleine hoogte
-
-// Maak de deur (rechthoekige doos)
-const doorGeometry = new THREE.BoxGeometry(1, 2, 0.1);
-const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-const door = new THREE.Mesh(doorGeometry, doorMaterial);
-scene.add(door);
-door.position.set(0, 1, 3.05); // Plaats de deur voor het huis
+renderer.setClearColor(0xb5b5b5); // Lichtblauwe achtergrond
 
 // Camera instellingen
 camera.position.z = 10;
@@ -44,8 +30,8 @@ loader.load(
 	new URL("../3DObject/public/Tabel.gltf/table.gltf", import.meta.url).href,
 	(gltf) => {
 		const table = gltf.scene;
-		table.position.set(2, 0);
-		table.scale.set(1, 1, 1);
+		table.position.set(2, 0, 4);
+		table.scale.set(1.3, 1.3, 1.4);
 		scene.add(table);
 	},
 	undefined,
@@ -54,48 +40,58 @@ loader.load(
 	}
 );
 
-// Animatie en interactie met deur
-let doorOpen = false;
-const openAngle = Math.PI / 2;
-const closeAngle = 0;
-
-function toggleDoor() {
-	doorOpen = !doorOpen;
-}
-
-// Detectie van muisklik op de deur
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-window.addEventListener("click", (event) => {
-	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-	mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-	raycaster.setFromCamera(mouse, camera);
-	const intersects = raycaster.intersectObject(door);
-	if (intersects.length > 0) {
-		toggleDoor();
+// Laad de lamp
+const loader2 = new GLTFLoader();
+loader2.load(
+	new URL("../3DObject/public/Lamp/lamp.gltf", import.meta.url).href,
+	(gltf) => {
+		const lamp = gltf.scene;
+		lamp.position.set(-2, 0, 5);
+		lamp.scale.set(0.7, 0.7, 0.7);
+		scene.add(lamp);
+	},
+	undefined,
+	(error) => {
+		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
 	}
-});
+);
+
+// Laad het huis
+const loader3 = new GLTFLoader();
+loader3.load(
+	new URL("../3DObject/public/House/house.gltf", import.meta.url).href,
+	(gltf) => {
+		const house = gltf.scene;
+		house.position.set(0, 0, 0);
+		house.scale.set(0.7, 0.7, 0.7);
+		house.rotation.y = Math.PI / -2;
+		scene.add(house);
+	},
+	undefined,
+	(error) => {
+		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
+	}
+);
+const loader4 = new GLTFLoader();
+loader4.load(
+	new URL("../3DObject/public/Car/Car.gltf", import.meta.url).href,
+	(gltf) => {
+		const house = gltf.scene;
+		house.position.set(4, 0, 0);
+		house.scale.set(0.7, 0.7, 0.7);
+		house.rotation.y = Math.PI / 2;
+		scene.add(house);
+	},
+	undefined,
+	(error) => {
+		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
+	}
+);
 
 function animate() {
 	requestAnimationFrame(animate);
-	if (doorOpen) {
-		if (door.rotation.y < openAngle) {
-			door.rotation.y += 0.05;
-		}
-	} else {
-		if (door.rotation.y > closeAngle) {
-			door.rotation.y -= 0.05;
-		}
-	}
 	controls.update();
 	renderer.render(scene, camera);
 }
 
 animate();
-
-window.addEventListener("keydown", (event) => {
-	if (event.key === " ") {
-		toggleDoor();
-	}
-});
