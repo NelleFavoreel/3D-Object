@@ -18,11 +18,13 @@ camera.position.z = 10;
 const ambientLight = new THREE.AmbientLight(0x404040, 1);
 scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(5, 5, 5);
+directionalLight.position.set(20, 9, 5);
 scene.add(directionalLight);
 
 // OrbitControls voor beweging van de camera
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.minPolarAngle = Math.PI / 8; // Minimaliseer de hoek (camera kan niet verder naar beneden dan dit)
+controls.maxPolarAngle = Math.PI / 2;
 
 // Laad de tafel met GLTFLoader
 const loader = new GLTFLoader();
@@ -46,7 +48,7 @@ loader2.load(
 	new URL("../3DObject/public/Lamp/lamp.gltf", import.meta.url).href,
 	(gltf) => {
 		const lamp = gltf.scene;
-		lamp.position.set(-2, 0, 5);
+		lamp.position.set(-2.2, -0.1, 3);
 		lamp.scale.set(0.7, 0.7, 0.7);
 		scene.add(lamp);
 	},
@@ -87,7 +89,76 @@ loader4.load(
 		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
 	}
 );
+const loader6 = new GLTFLoader();
+loader6.load(
+	new URL("../3DObject/public/Rat.gltf/rat.gltf", import.meta.url).href,
+	(gltf) => {
+		const house = gltf.scene;
+		house.position.set(-3.2, 0, 4);
+		house.scale.set(1.2, 1.2, 1.2);
+		//house.rotation.y = Math.PI / 2;
+		scene.add(house);
+	},
+	undefined,
+	(error) => {
+		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
+	}
+);
 
+// Laad de grond-textuur
+const textureLoader = new THREE.TextureLoader();
+const groundTexture = textureLoader.load(
+	new URL("../3DObject/public/Grass/textures/leafy_grass_diff_1k.jpg", import.meta.url).href,
+	() => console.log("Textuur geladen!"),
+	undefined,
+	(error) => console.error("Fout bij het laden van de textuur:", error)
+);
+
+// Optionele instellingen voor herhalen van de textuur
+groundTexture.wrapS = THREE.RepeatWrapping;
+groundTexture.wrapT = THREE.RepeatWrapping;
+groundTexture.repeat.set(4, 4); // Pas de herhalingen aan zoals gewenst
+
+// Maak een vlak voor de grond
+const groundGeometry = new THREE.PlaneGeometry(50, 50);
+const groundMaterial = new THREE.MeshStandardMaterial({
+	map: groundTexture,
+	side: THREE.DoubleSide, // Beide zijden van het vlak zijn zichtbaar
+});
+const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+ground.rotation.x = -Math.PI / 2; // Zet het vlak horizontaal
+ground.position.y = -0.1; // Plaats het iets onder het huis
+scene.add(ground);
+ground;
+
+const loader10 = new GLTFLoader();
+loader10.load(
+	new URL("../3DObject/public/Boom/boom.gltf", import.meta.url).href,
+	(gltf) => {
+		const house = gltf.scene;
+		house.position.set(-4, -0.1, 0);
+		house.scale.set(1.5, 1.5, 1.5);
+		scene.add(house);
+	},
+	undefined,
+	(error) => {
+		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
+	}
+);
+const loader11 = new GLTFLoader();
+loader11.load(
+	new URL("../3DObject/public/Camera/Camera.gltf", import.meta.url).href,
+	(gltf) => {
+		const house = gltf.scene;
+		house.position.set(2, 0.57, 4);
+		house.scale.set(1.5, 1.5, 1.5);
+		scene.add(house);
+	},
+	undefined,
+	(error) => {
+		console.error("Er was een probleem bij het laden van het GLTF-model:", error);
+	}
+);
 function animate() {
 	requestAnimationFrame(animate);
 	controls.update();
