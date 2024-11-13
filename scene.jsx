@@ -2,21 +2,44 @@ import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { EXRLoader } from "three/examples/jsm/loaders/EXRLoader.js";
 
 const Scene = () => {
 	const canvasRef = useRef(null);
 	const [points, setPoints] = useState(0);
 	const [message, setMessage] = useState("");
-	const [foundObjects, setFoundObjects] = useState([]);
-	const sceneRef = useRef(null);
-	const rendererRef = useRef(null);
-	const houseRef = useRef(null);
-	const objectsToFind = ["rat", "camera", "table", "lamp"];
+	const [showStartScreen, setShowStartScreen] = useState(true);
+	const [showEndScreen, setShowEndScreen] = useState(false);
+	const [elapsedTime, setElapsedTime] = useState(0); // Tijd in seconden
+	const timerRef = useRef(null); // Voor de interval-timer
+	const startTimeRef = useRef(null); // Opslaan van starttijd
+
+	const startGame = () => {
+		setShowStartScreen(false);
+		setPoints(0);
+		setMessage("");
+		setShowEndScreen(false);
+
+		// Start de timer
+		startTimeRef.current = Date.now();
+		timerRef.current = setInterval(() => {
+			setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000)); // Bereken verstreken tijd in seconden
+		}, 1000);
+	};
 
 	useEffect(() => {
-		console.log("Aantal canvassen in de DOM:", document.querySelectorAll("canvas").length);
+		// Controleer of het spel voltooid is
+		if (points === 4) {
+			clearInterval(timerRef.current); // Stop de timer
+			setShowEndScreen(true); // Toon het eindscherm
+		}
+	}, [points]);
+
+	useEffect(() => {
+		if (showStartScreen || showEndScreen) return; // Niet doorgaan als het start- of eindscherm zichtbaar is
 		if (!canvasRef.current) return;
 
+		console.log("Initialiseer de Three.js scène");
 		// De scene, camera, renderer etc. worden maar één keer ingesteld
 		const scene = new THREE.Scene();
 		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -26,35 +49,85 @@ const Scene = () => {
 		// Voeg de renderer als een DOM-element toe, alleen als het nog niet bestaat
 		if (!canvasRef.current.contains(renderer.domElement)) {
 			canvasRef.current.appendChild(renderer.domElement);
+			console.log("Renderer toegevoegd aan de DOM");
 		}
 
-		// Achtergrondkleur instellen
-		renderer.setClearColor(0xb5b5b5);
+		// // Achtergrondkleur instellen
+		// renderer.setClearColor(0xb5b5b5);
 
 		// Camera positie
 		camera.position.z = 7.2;
 		camera.position.y = 2;
 
 		// Licht toevoegen
-		const ambientLight = new THREE.AmbientLight(0x004040, 1);
-		scene.add(ambientLight);
-		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-		directionalLight.position.set(20, 9, 5);
-		scene.add(directionalLight);
+		// const ambientLight = new THREE.AmbientLight(0x004040, 1);
+		// scene.add(ambientLight);
+		// const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+		// directionalLight.position.set(20, 9, 5);
+		// scene.add(directionalLight);
 
 		// OrbitControls
 		const controls = new OrbitControls(camera, renderer.domElement);
 		controls.minPolarAngle = Math.PI / 8;
 		controls.maxPolarAngle = Math.PI / 2;
+		// Laad de achtergrond (EXR-afbeelding) voor de bestaande scène
+		const loadBackground = () => {
+			// Maak de scene en renderer aan (voor dit voorbeeld)
+			const exrLoader = new EXRLoader(); // Renamed loader to exrLoader
+			exrLoader.load(
+				"/public/Background2.exr", // Pad naar je EXR-bestand
+				(texture) => {
+					const pmremGenerator = new THREE.PMREMGenerator(renderer);
+					const envMap = pmremGenerator.fromEquirectangular(texture).texture;
 
-		// Sla de scène en renderer op in refs om herinitialisatie te voorkomen
-		sceneRef.current = scene;
-		rendererRef.current = renderer;
+					// Zet de achtergrond en de omgevingsbelichting
+					scene.background = envMap;
+					scene.environment = envMap;
 
-		// GLTFLoader instellen
+					// Verwijder de EXR-tekstuur om geheugen te besparen
+					texture.dispose();
+					pmremGenerator.dispose();
+				},
+				undefined, // Geen voortgangsfunctie (optioneel)
+				(error) => console.error("Error loading EXR texture:", error)
+			);
+		};
+		loadBackground();
+
+		const textureLoader = new THREE.TextureLoader();
+
+		// Laad de drie texturen
+		const groundTexture = textureLoader.load("/public/Grass/textures/leafy_grass_diff_1k.jpg"); // Diffuse map
+		const bumpTexture = textureLoader.load("/public/Grass/textures/leafy_grass_arm_1k.jpg"); // Bump map
+		const normalTexture = textureLoader.load("/public/Grass/textures/leafy_grass_nor_gl_1k.jpg"); // Normal map
+
+		// Herhaal de texturen
+		groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+		groundTexture.repeat.set(10, 10);
+
+		bumpTexture.wrapS = bumpTexture.wrapT = THREE.RepeatWrapping;
+		bumpTexture.repeat.set(10, 10);
+
+		normalTexture.wrapS = normalTexture.wrapT = THREE.RepeatWrapping;
+		normalTexture.repeat.set(10, 10);
+
+		// Maak het materiaal met diffuse, bump en normal maps
+		const groundMaterial = new THREE.MeshStandardMaterial({
+			map: groundTexture, // De diffuse map
+			bumpMap: bumpTexture, // De bump map
+			bumpScale: 0.1, // De sterkte van de bump mapping
+			normalMap: normalTexture, // De normal map
+			normalScale: new THREE.Vector2(1, 1), // Schaal voor normal map (kan worden aangepast)
+		});
+
+		const ground = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), groundMaterial);
+		ground.rotation.x = -Math.PI / 2; // Draai de ondergrond horizontaal
+		ground.position.y = 0; // Zet de juiste hoogte
+		scene.add(ground);
+
 		const loader = new GLTFLoader();
 
-		// Models laden (rat en camera zijn interactief)
+		// Models laden
 		const loadRat = () => {
 			loader.load(
 				"/public/Rat.gltf/rat.gltf",
@@ -139,11 +212,10 @@ const Scene = () => {
 				"public/House/House.gltf",
 				(gltf) => {
 					const house = gltf.scene;
-					house.position.set(0, 0, 0);
+					house.position.set(0, 0.1, 0);
 					house.scale.set(0.7, 0.7, 0.7);
 					house.rotation.y = Math.PI / -2;
 					scene.add(house);
-					houseRef.current = house;
 				},
 				undefined,
 				(error) => console.error("Error loading house model:", error)
@@ -197,7 +269,7 @@ const Scene = () => {
 				"public/handschoenen.gltf/handschoenen.gltf",
 				(gltf) => {
 					const tree = gltf.scene;
-					tree.position.set(0, 1.9, -2);
+					tree.position.set(0, 2, -2);
 					tree.scale.set(1.5, 1.5, 1.5);
 					scene.add(tree);
 					tree.rotation.y = Math.PI / 2;
@@ -268,28 +340,28 @@ const Scene = () => {
 						}
 
 						setPoints((prevPoints) => prevPoints + 1);
-						setMessage("Je hebt de camera aangeklikt! Camera verborgen.");
-					} else if (clickedObject.name === "spray_paint_bottles_02") {
+						setMessage("Je hebt de camera gevonden!");
+					} else if (clickedObject.name === "spray_paint_bottles_02" || clickedObject.name === "spray_paint_bottles_02_dented") {
 						const sprayObject1 = scene.getObjectByName("spray_paint_bottles_02");
 						if (sprayObject1) {
 							sprayObject1.visible = false;
 						}
 						setPoints((prevPoints) => prevPoints + 1);
-						setMessage("Je hebt de spray aangeklikt! Spray verborgen.");
+						setMessage("Goed! Je hebt de spray gevonden!");
 					} else if (clickedObject.name === "baseball_01") {
 						const sprayObject1 = scene.getObjectByName("baseball_01");
 						if (sprayObject1) {
 							sprayObject1.visible = false;
 						}
 						setPoints((prevPoints) => prevPoints + 1);
-						setMessage("Je hebt de baseball gevonden!");
+						setMessage("Wow je hebt de baseball!");
 					} else if (clickedObject.name === "Cube062_Material001_0" || clickedObject.name === "Cube511_Material001_0" || clickedObject.name === "garden_gloves_01") {
 						const sprayObject1 = scene.getObjectByName("garden_gloves_01");
 						if (sprayObject1) {
 							sprayObject1.visible = false;
 						}
 						setPoints((prevPoints) => prevPoints + 1);
-						setMessage("Je hebt de baseball gevonden!");
+						setMessage("Goed zo! Je hebt de handschoenen gevonden");
 					}
 				}
 			} else {
@@ -309,15 +381,41 @@ const Scene = () => {
 		animate();
 
 		return () => {
-			window.removeEventListener("click", onMouseClick);
+			if (timerRef.current) {
+				clearInterval(timerRef.current); // Timer stoppen bij demontage
+			}
 		};
-	}, []);
+	}, [showStartScreen, showEndScreen]);
+
 	return (
-		<div>
-			<p>Punten: {points}</p>
-			<p>{message}</p>
-			<div ref={canvasRef} style={{ width: "100vw", height: "100vh" }}></div>
-		</div>
+		<>
+			{showStartScreen ? (
+				<div className="start-screen">
+					<h1>Zoek de voorwerpen!</h1>
+					<ul>
+						<li>Handschoen</li>
+						<li>BaseBall</li>
+						<li>Fototoestel</li>
+						<li>Paarse graffiti spray</li>
+					</ul>
+					<button onClick={startGame}>Start</button>
+				</div>
+			) : showEndScreen ? (
+				<div className="end-screen">
+					<h1>Je hebt alles gevonden!</h1>
+					<p>Het duurde {elapsedTime} seconden om alles te vinden.</p>
+					<button onClick={() => setShowStartScreen(true)}>Opnieuw spelen</button>
+				</div>
+			) : (
+				<>
+					<div className="text">
+						<p>Punten: {points}</p>
+						<p>{message}</p>
+					</div>
+					<div ref={canvasRef} style={{ width: "100vw", height: "100vh" }}></div>
+				</>
+			)}
+		</>
 	);
 };
 
