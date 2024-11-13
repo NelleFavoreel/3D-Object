@@ -10,85 +10,74 @@ const Scene = () => {
 	const [message, setMessage] = useState("");
 	const [showStartScreen, setShowStartScreen] = useState(true);
 	const [showEndScreen, setShowEndScreen] = useState(false);
-	const [elapsedTime, setElapsedTime] = useState(0); // Tijd in seconden
-	const timerRef = useRef(null); // Voor de interval-timer
-	const startTimeRef = useRef(null); // Opslaan van starttijd
+	const [elapsedTime, setElapsedTime] = useState(0); // Time in seconds
+	const [objectsToFind, setObjectsToFind] = useState(["Handschoen", "BaseBall", "Fototoestel", "Paarse graffiti spray"]);
+
+	const timerRef = useRef(null); // For the interval timer
+	const startTimeRef = useRef(null); // Store start time
 
 	const startGame = () => {
 		setShowStartScreen(false);
 		setPoints(0);
 		setMessage("");
 		setShowEndScreen(false);
+		setObjectsToFind(["Handschoen", "BaseBall", "Fototoestel", "Paarse graffiti spray"]);
 
-		// Start de timer
+		// Start the timer
 		startTimeRef.current = Date.now();
 		timerRef.current = setInterval(() => {
-			setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000)); // Bereken verstreken tijd in seconden
+			setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000)); // Calculate elapsed time in seconds
 		}, 1000);
 	};
 
 	useEffect(() => {
-		// Controleer of het spel voltooid is
+		// Check if the game is completed
 		if (points === 4) {
-			clearInterval(timerRef.current); // Stop de timer
-			setShowEndScreen(true); // Toon het eindscherm
+			clearInterval(timerRef.current); // Stop the timer
+			setShowEndScreen(true); // Show the end screen
 		}
 	}, [points]);
 
 	useEffect(() => {
-		if (showStartScreen || showEndScreen) return; // Niet doorgaan als het start- of eindscherm zichtbaar is
+		if (showStartScreen || showEndScreen) return; // Do not continue if start or end screen is showing
 		if (!canvasRef.current) return;
 
-		console.log("Initialiseer de Three.js scène");
-		// De scene, camera, renderer etc. worden maar één keer ingesteld
+		console.log("Initializing the Three.js scene");
+		// Scene, camera, renderer, etc. are set only once
 		const scene = new THREE.Scene();
 		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 		const renderer = new THREE.WebGLRenderer({ antialias: true });
 		renderer.setSize(window.innerWidth, window.innerHeight);
 
-		// Voeg de renderer als een DOM-element toe, alleen als het nog niet bestaat
+		// Add the renderer to the DOM if it hasn't been added already
 		if (!canvasRef.current.contains(renderer.domElement)) {
 			canvasRef.current.appendChild(renderer.domElement);
-			console.log("Renderer toegevoegd aan de DOM");
+			console.log("Renderer added to the DOM");
 		}
 
-		// // Achtergrondkleur instellen
-		// renderer.setClearColor(0xb5b5b5);
-
-		// Camera positie
 		camera.position.z = 7.2;
 		camera.position.y = 2;
-
-		// Licht toevoegen
-		// const ambientLight = new THREE.AmbientLight(0x004040, 1);
-		// scene.add(ambientLight);
-		// const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-		// directionalLight.position.set(20, 9, 5);
-		// scene.add(directionalLight);
 
 		// OrbitControls
 		const controls = new OrbitControls(camera, renderer.domElement);
 		controls.minPolarAngle = Math.PI / 8;
 		controls.maxPolarAngle = Math.PI / 2;
-		// Laad de achtergrond (EXR-afbeelding) voor de bestaande scène
+
+		// Load background (EXR image) for the existing scene
 		const loadBackground = () => {
-			// Maak de scene en renderer aan (voor dit voorbeeld)
-			const exrLoader = new EXRLoader(); // Renamed loader to exrLoader
+			const exrLoader = new EXRLoader();
 			exrLoader.load(
-				"/public/Background2.exr", // Pad naar je EXR-bestand
+				"/public/Background2.exr", // Path to your EXR file
 				(texture) => {
 					const pmremGenerator = new THREE.PMREMGenerator(renderer);
 					const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-
-					// Zet de achtergrond en de omgevingsbelichting
 					scene.background = envMap;
 					scene.environment = envMap;
 
-					// Verwijder de EXR-tekstuur om geheugen te besparen
 					texture.dispose();
 					pmremGenerator.dispose();
 				},
-				undefined, // Geen voortgangsfunctie (optioneel)
+				undefined,
 				(error) => console.error("Error loading EXR texture:", error)
 			);
 		};
@@ -96,12 +85,11 @@ const Scene = () => {
 
 		const textureLoader = new THREE.TextureLoader();
 
-		// Laad de drie texturen
-		const groundTexture = textureLoader.load("/public/Grass/textures/leafy_grass_diff_1k.jpg"); // Diffuse map
-		const bumpTexture = textureLoader.load("/public/Grass/textures/leafy_grass_arm_1k.jpg"); // Bump map
-		const normalTexture = textureLoader.load("/public/Grass/textures/leafy_grass_nor_gl_1k.jpg"); // Normal map
+		// Load the three textures
+		const groundTexture = textureLoader.load("/public/Grass/textures/leafy_grass_diff_1k.jpg");
+		const bumpTexture = textureLoader.load("/public/Grass/textures/leafy_grass_arm_1k.jpg");
+		const normalTexture = textureLoader.load("/public/Grass/textures/leafy_grass_nor_gl_1k.jpg");
 
-		// Herhaal de texturen
 		groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
 		groundTexture.repeat.set(10, 10);
 
@@ -111,18 +99,17 @@ const Scene = () => {
 		normalTexture.wrapS = normalTexture.wrapT = THREE.RepeatWrapping;
 		normalTexture.repeat.set(10, 10);
 
-		// Maak het materiaal met diffuse, bump en normal maps
 		const groundMaterial = new THREE.MeshStandardMaterial({
-			map: groundTexture, // De diffuse map
-			bumpMap: bumpTexture, // De bump map
-			bumpScale: 0.1, // De sterkte van de bump mapping
-			normalMap: normalTexture, // De normal map
-			normalScale: new THREE.Vector2(1, 1), // Schaal voor normal map (kan worden aangepast)
+			map: groundTexture,
+			bumpMap: bumpTexture,
+			bumpScale: 0.1,
+			normalMap: normalTexture,
+			normalScale: new THREE.Vector2(1, 1),
 		});
 
 		const ground = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), groundMaterial);
-		ground.rotation.x = -Math.PI / 2; // Draai de ondergrond horizontaal
-		ground.position.y = 0; // Zet de juiste hoogte
+		ground.rotation.x = -Math.PI / 2;
+		ground.position.y = 0;
 		scene.add(ground);
 
 		const loader = new GLTFLoader();
@@ -278,6 +265,46 @@ const Scene = () => {
 				(error) => console.error("Error loading tree model:", error)
 			);
 		};
+		const ton1 = () => {
+			loader.load(
+				"public/ton1.gltf/ton1.gltf",
+				(gltf) => {
+					const tree = gltf.scene;
+					tree.position.set(-3.2, 0, 0.2);
+					tree.scale.set(1, 1, 1);
+					scene.add(tree);
+				},
+				undefined,
+				(error) => console.error("Error loading tree model:", error)
+			);
+		};
+		const ton2 = () => {
+			loader.load(
+				"public/ton2.gltf/ton2.gltf",
+				(gltf) => {
+					const tree = gltf.scene;
+					tree.position.set(-3, 0, 1);
+					tree.scale.set(1, 1, 1);
+					scene.add(tree);
+				},
+				undefined,
+				(error) => console.error("Error loading tree model:", error)
+			);
+		};
+		const box = () => {
+			loader.load(
+				"public/box.gltf/box.gltf",
+				(gltf) => {
+					const tree = gltf.scene;
+					tree.position.set(1.3, 0, -1);
+					tree.scale.set(1, 1, 1);
+					scene.add(tree);
+					tree.rotation.y = Math.PI / 2;
+				},
+				undefined,
+				(error) => console.error("Error loading tree model:", error)
+			);
+		};
 
 		// Laad alle modellen (maar het huis en de rat zullen alleen een keer geladen worden)
 		loadRat();
@@ -290,8 +317,11 @@ const Scene = () => {
 		loadTree();
 		loadBaseball();
 		loadHandshoenen();
+		ton1();
+		ton2();
+		box();
 
-		// Raycasting voor interactieve objecten
+		// Raycasting for interactive objects
 		const raycaster = new THREE.Raycaster();
 		const mouse = new THREE.Vector2();
 
@@ -301,32 +331,25 @@ const Scene = () => {
 
 			raycaster.setFromCamera(mouse, camera);
 
-			const intersects = raycaster.intersectObjects(scene.children, true); // true om door alle children heen te gaan
+			const intersects = raycaster.intersectObjects(scene.children, true);
 			if (intersects.length > 0) {
 				let clickedObject = intersects[0].object;
 
-				// Loop omhoog door de hiërarchie om het hoofdobject te vinden
 				while (clickedObject.parent && clickedObject.name === "") {
 					clickedObject = clickedObject.parent;
 				}
 
-				console.log("Clicked object:", clickedObject.name); // Log het geklikte object
+				console.log("Clicked object:", clickedObject.name);
 
-				// Bereken de afstand tussen de muis en het object
-				const mouseWorldPosition = intersects[0].point; // De plek waar de ray het object raakt
+				const mouseWorldPosition = intersects[0].point;
 				const objectPosition = clickedObject.getWorldPosition(new THREE.Vector3());
-				const distance = mouseWorldPosition.distanceTo(objectPosition); // Afstand tussen de muis en het object
-				console.log("Afstand tot het object:", distance);
+				const distance = mouseWorldPosition.distanceTo(objectPosition);
+				console.log("Distance to the object:", distance);
 
-				// Verhoog de afstandsgrens voor een grotere detectiezone (bijvoorbeeld 2.5)
 				const detectionRange = 9;
-
 				// Als de afstand kleiner is dan de verhoogde range, een punt toevoegen
 				if (distance < detectionRange) {
-					if (clickedObject.name === "street_rat") {
-						setPoints((prevPoints) => prevPoints + 1);
-						setMessage("Je hebt de rat aangeklikt!");
-					} else if (clickedObject.name === "Mesh016" || clickedObject.name === "folding_wooden_stool") {
+					if (clickedObject.name === "Mesh016" || clickedObject.name === "folding_wooden_stool") {
 						// Verberg "Mesh016" en de camera-objecten
 						const cameraObject1 = scene.getObjectByName("Camera_01");
 						const cameraObject2 = scene.getObjectByName("Camera_01_strap");
@@ -341,6 +364,7 @@ const Scene = () => {
 
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Je hebt de camera gevonden!");
+						setObjectsToFind((prevItems) => prevItems.filter((item) => item !== "Fototoestel"));
 					} else if (clickedObject.name === "spray_paint_bottles_02" || clickedObject.name === "spray_paint_bottles_02_dented") {
 						const sprayObject1 = scene.getObjectByName("spray_paint_bottles_02");
 						if (sprayObject1) {
@@ -348,6 +372,7 @@ const Scene = () => {
 						}
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Goed! Je hebt de spray gevonden!");
+						setObjectsToFind((prevItems) => prevItems.filter((item) => item !== "Paarse graffiti spray"));
 					} else if (clickedObject.name === "baseball_01") {
 						const sprayObject1 = scene.getObjectByName("baseball_01");
 						if (sprayObject1) {
@@ -355,6 +380,7 @@ const Scene = () => {
 						}
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Wow je hebt de baseball!");
+						setObjectsToFind((prevItems) => prevItems.filter((item) => item !== "BaseBall"));
 					} else if (clickedObject.name === "Cube062_Material001_0" || clickedObject.name === "Cube511_Material001_0" || clickedObject.name === "garden_gloves_01") {
 						const sprayObject1 = scene.getObjectByName("garden_gloves_01");
 						if (sprayObject1) {
@@ -362,6 +388,7 @@ const Scene = () => {
 						}
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Goed zo! Je hebt de handschoenen gevonden");
+						setObjectsToFind((prevItems) => prevItems.filter((item) => item !== "Handschoen"));
 					}
 				}
 			} else {
@@ -369,7 +396,7 @@ const Scene = () => {
 			}
 		};
 
-		renderer.domElement.addEventListener("click", onMouseClick);
+		renderer.domElement.addEventListener("click", onMouseClick, false);
 
 		// Animatielus
 		const animate = () => {
@@ -393,10 +420,9 @@ const Scene = () => {
 				<div className="start-screen">
 					<h1>Zoek de voorwerpen!</h1>
 					<ul>
-						<li>Handschoen</li>
-						<li>BaseBall</li>
-						<li>Fototoestel</li>
-						<li>Paarse graffiti spray</li>
+						{objectsToFind.map((item, index) => (
+							<li key={index}>{item}</li>
+						))}
 					</ul>
 					<button onClick={startGame}>Start</button>
 				</div>
@@ -410,6 +436,11 @@ const Scene = () => {
 				<>
 					<div className="text">
 						<p>Punten: {points}</p>
+						<ul>
+							{objectsToFind.map((item, index) => (
+								<li key={index}>{item}</li>
+							))}
+						</ul>
 						<p>{message}</p>
 					</div>
 					<div ref={canvasRef} style={{ width: "100vw", height: "100vh" }}></div>
