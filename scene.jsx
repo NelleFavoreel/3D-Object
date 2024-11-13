@@ -7,10 +7,11 @@ const Scene = () => {
 	const canvasRef = useRef(null);
 	const [points, setPoints] = useState(0);
 	const [message, setMessage] = useState("");
+	const [foundObjects, setFoundObjects] = useState([]);
 	const sceneRef = useRef(null);
 	const rendererRef = useRef(null);
-	const ratRef = useRef(null);
 	const houseRef = useRef(null);
+	const objectsToFind = ["rat", "camera", "table", "lamp"];
 
 	useEffect(() => {
 		console.log("Aantal canvassen in de DOM:", document.querySelectorAll("canvas").length);
@@ -31,7 +32,8 @@ const Scene = () => {
 		renderer.setClearColor(0xb5b5b5);
 
 		// Camera positie
-		camera.position.z = 10;
+		camera.position.z = 7.2;
+		camera.position.y = 2;
 
 		// Licht toevoegen
 		const ambientLight = new THREE.AmbientLight(0x004040, 1);
@@ -55,12 +57,13 @@ const Scene = () => {
 		// Models laden (rat en camera zijn interactief)
 		const loadRat = () => {
 			loader.load(
-				"Rat.gltf/rat.gltf",
+				"/public/Rat.gltf/rat.gltf",
 				(gltf) => {
 					const rat = gltf.scene;
+					rat.name = "rat";
 					rat.position.set(-3.2, 0, 4);
 					rat.scale.set(1.2, 1.2, 1.2);
-					rat.name = "rat";
+
 					scene.add(rat);
 					console.log("Rat model loaded and added to scene");
 				},
@@ -71,25 +74,20 @@ const Scene = () => {
 
 		const loadCamera = () => {
 			loader.load(
-				"/public/Camera/Camera.gltf", // Pad naar je GLTF-bestand
+				"/public/Camera/Camera.gltf",
 				(gltf) => {
-					// Het geladen GLTF-model
 					const cameraModel = gltf.scene;
-
-					// Pas de naam aan voor duidelijkheid
 					cameraModel.name = "camera";
-
-					// Stel de positie en schaal van het object in
-					cameraModel.position.set(2, 0.57, 4); // Verplaats de camera naar gewenste positie
-					cameraModel.scale.set(1.5, 1.5, 1.5); // Schaal het model naar gewenst formaat
+					cameraModel.position.set(2, 0.57, 4);
+					cameraModel.scale.set(1.5, 1.5, 1.5);
 
 					// Voeg het camera-model toe aan de scène
 					scene.add(cameraModel);
 
 					console.log("Camera model loaded and added to scene");
 				},
-				undefined, // Dit is voor de voortgang van de laadstatus (optioneel)
-				(error) => console.error("Error loading camera model:", error) // Error handling als het laden mislukt
+				undefined,
+				(error) => console.error("Error loading camera model:", error)
 			);
 		};
 
@@ -105,6 +103,20 @@ const Scene = () => {
 				},
 				undefined,
 				(error) => console.error("Error loading table model:", error)
+			);
+		};
+		const loadSpray = () => {
+			loader.load(
+				"public/spray.gltf/spray.gltf",
+				(gltf) => {
+					const spray = gltf.scene;
+					spray.position.set(1.3, 0, 2);
+					spray.scale.set(1, 1, 1);
+					scene.add(spray);
+					spray.rotation.y = Math.PI / 2;
+				},
+				undefined,
+				(error) => console.error("Error loading spray model:", error)
 			);
 		};
 
@@ -124,14 +136,14 @@ const Scene = () => {
 
 		const loadHouse = () => {
 			loader.load(
-				"public/House/House.gltf", // Zorg ervoor dat het pad correct is
+				"public/House/House.gltf",
 				(gltf) => {
 					const house = gltf.scene;
 					house.position.set(0, 0, 0);
 					house.scale.set(0.7, 0.7, 0.7);
 					house.rotation.y = Math.PI / -2;
 					scene.add(house);
-					houseRef.current = house; // Bewaar het huis in een ref
+					houseRef.current = house;
 				},
 				undefined,
 				(error) => console.error("Error loading house model:", error)
@@ -140,7 +152,7 @@ const Scene = () => {
 
 		const loadCar = () => {
 			loader.load(
-				"public/Car/Car.gltf", // Zorg ervoor dat het pad correct is
+				"public/Car/Car.gltf",
 				(gltf) => {
 					const car = gltf.scene;
 					car.position.set(4, 0, 0);
@@ -155,7 +167,7 @@ const Scene = () => {
 
 		const loadTree = () => {
 			loader.load(
-				"public/Boom/Boom.gltf", // Zorg ervoor dat het pad correct is
+				"public/Boom/Boom.gltf",
 				(gltf) => {
 					const tree = gltf.scene;
 					tree.position.set(-4, -0.1, 0);
@@ -166,15 +178,46 @@ const Scene = () => {
 				(error) => console.error("Error loading tree model:", error)
 			);
 		};
+		const loadBaseball = () => {
+			loader.load(
+				"public/baseball.gltf/baseball.gltf",
+				(gltf) => {
+					const tree = gltf.scene;
+					tree.position.set(5, 0.05, -0.69);
+					tree.scale.set(1.5, 1.5, 1.5);
+					scene.add(tree);
+					tree.rotation.y = Math.PI / 2;
+				},
+				undefined,
+				(error) => console.error("Error loading tree model:", error)
+			);
+		};
+		const loadHandshoenen = () => {
+			loader.load(
+				"public/handschoenen.gltf/handschoenen.gltf",
+				(gltf) => {
+					const tree = gltf.scene;
+					tree.position.set(0, 1.9, -2);
+					tree.scale.set(1.5, 1.5, 1.5);
+					scene.add(tree);
+					tree.rotation.y = Math.PI / 2;
+				},
+				undefined,
+				(error) => console.error("Error loading tree model:", error)
+			);
+		};
 
 		// Laad alle modellen (maar het huis en de rat zullen alleen een keer geladen worden)
 		loadRat();
 		loadCamera();
 		loadTable();
+		loadSpray();
 		loadLamp();
 		loadHouse();
 		loadCar();
 		loadTree();
+		loadBaseball();
+		loadHandshoenen();
 
 		// Raycasting voor interactieve objecten
 		const raycaster = new THREE.Raycaster();
@@ -203,8 +246,11 @@ const Scene = () => {
 				const distance = mouseWorldPosition.distanceTo(objectPosition); // Afstand tussen de muis en het object
 				console.log("Afstand tot het object:", distance);
 
-				// Als de afstand kleiner is dan 2, een punt toevoegen
-				if (distance < 2) {
+				// Verhoog de afstandsgrens voor een grotere detectiezone (bijvoorbeeld 2.5)
+				const detectionRange = 9;
+
+				// Als de afstand kleiner is dan de verhoogde range, een punt toevoegen
+				if (distance < detectionRange) {
 					if (clickedObject.name === "street_rat") {
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Je hebt de rat aangeklikt!");
@@ -214,15 +260,36 @@ const Scene = () => {
 						const cameraObject2 = scene.getObjectByName("Camera_01_strap");
 
 						if (cameraObject1) {
-							cameraObject1.visible = false; // Verberg het camera-object "Camera_01"
+							cameraObject1.visible = false;
 						}
 
 						if (cameraObject2) {
-							cameraObject2.visible = false; // Verberg het camera-object "Camera_01_strap"
+							cameraObject2.visible = false;
 						}
 
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Je hebt de camera aangeklikt! Camera verborgen.");
+					} else if (clickedObject.name === "spray_paint_bottles_02") {
+						const sprayObject1 = scene.getObjectByName("spray_paint_bottles_02");
+						if (sprayObject1) {
+							sprayObject1.visible = false;
+						}
+						setPoints((prevPoints) => prevPoints + 1);
+						setMessage("Je hebt de spray aangeklikt! Spray verborgen.");
+					} else if (clickedObject.name === "baseball_01") {
+						const sprayObject1 = scene.getObjectByName("baseball_01");
+						if (sprayObject1) {
+							sprayObject1.visible = false;
+						}
+						setPoints((prevPoints) => prevPoints + 1);
+						setMessage("Je hebt de baseball gevonden!");
+					} else if (clickedObject.name === "Cube062_Material001_0" || clickedObject.name === "Cube511_Material001_0" || clickedObject.name === "garden_gloves_01") {
+						const sprayObject1 = scene.getObjectByName("garden_gloves_01");
+						if (sprayObject1) {
+							sprayObject1.visible = false;
+						}
+						setPoints((prevPoints) => prevPoints + 1);
+						setMessage("Je hebt de baseball gevonden!");
 					}
 				}
 			} else {
