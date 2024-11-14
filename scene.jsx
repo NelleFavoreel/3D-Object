@@ -10,46 +10,43 @@ const Scene = () => {
 	const [message, setMessage] = useState("");
 	const [showStartScreen, setShowStartScreen] = useState(true);
 	const [showEndScreen, setShowEndScreen] = useState(false);
-	const [elapsedTime, setElapsedTime] = useState(0); // Time in seconds
-	const [objectsToFind, setObjectsToFind] = useState(["Handschoen", "BaseBall", "Fototoestel", "Paarse graffiti spray"]);
+	const [elapsedTime, setElapsedTime] = useState(0);
+	const [objectsToFind, setObjectsToFind] = useState(["Handschoenen", "BaseBall", "Fototoestel", "Paarse graffiti spray"]);
 
-	const timerRef = useRef(null); // For the interval timer
-	const startTimeRef = useRef(null); // Store start time
+	const timerRef = useRef(null);
+	const startTimeRef = useRef(null);
 
 	const startGame = () => {
 		setShowStartScreen(false);
 		setPoints(0);
 		setMessage("");
 		setShowEndScreen(false);
-		setObjectsToFind(["Handschoen", "BaseBall", "Fototoestel", "Paarse graffiti spray"]);
+		setObjectsToFind(["Handschoenen", "BaseBall", "Fototoestel", "Paarse graffiti spray"]);
 
-		// Start the timer
 		startTimeRef.current = Date.now();
 		timerRef.current = setInterval(() => {
-			setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000)); // Calculate elapsed time in seconds
+			setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
 		}, 1000);
 	};
 
 	useEffect(() => {
-		// Check if the game is completed
 		if (points === 4) {
-			clearInterval(timerRef.current); // Stop the timer
-			setShowEndScreen(true); // Show the end screen
+			clearInterval(timerRef.current);
+			setShowEndScreen(true);
 		}
 	}, [points]);
 
 	useEffect(() => {
-		if (showStartScreen || showEndScreen) return; // Do not continue if start or end screen is showing
+		if (showStartScreen || showEndScreen) return;
 		if (!canvasRef.current) return;
 
 		console.log("Initializing the Three.js scene");
-		// Scene, camera, renderer, etc. are set only once
+
 		const scene = new THREE.Scene();
 		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 		const renderer = new THREE.WebGLRenderer({ antialias: true });
 		renderer.setSize(window.innerWidth, window.innerHeight);
 
-		// Add the renderer to the DOM if it hasn't been added already
 		if (!canvasRef.current.contains(renderer.domElement)) {
 			canvasRef.current.appendChild(renderer.domElement);
 			console.log("Renderer added to the DOM");
@@ -58,16 +55,14 @@ const Scene = () => {
 		camera.position.z = 7.2;
 		camera.position.y = 2;
 
-		// OrbitControls
 		const controls = new OrbitControls(camera, renderer.domElement);
 		controls.minPolarAngle = Math.PI / 8;
 		controls.maxPolarAngle = Math.PI / 2;
 
-		// Load background (EXR image) for the existing scene
 		const loadBackground = () => {
 			const exrLoader = new EXRLoader();
 			exrLoader.load(
-				"/public/Background2.exr", // Path to your EXR file
+				"/public/Background2.exr",
 				(texture) => {
 					const pmremGenerator = new THREE.PMREMGenerator(renderer);
 					const envMap = pmremGenerator.fromEquirectangular(texture).texture;
@@ -85,7 +80,6 @@ const Scene = () => {
 
 		const textureLoader = new THREE.TextureLoader();
 
-		// Load the three textures
 		const groundTexture = textureLoader.load("/public/Grass/textures/leafy_grass_diff_1k.jpg");
 		const bumpTexture = textureLoader.load("/public/Grass/textures/leafy_grass_arm_1k.jpg");
 		const normalTexture = textureLoader.load("/public/Grass/textures/leafy_grass_nor_gl_1k.jpg");
@@ -114,7 +108,6 @@ const Scene = () => {
 
 		const loader = new GLTFLoader();
 
-		// Models laden
 		const loadRat = () => {
 			loader.load(
 				"/public/Rat.gltf/rat.gltf",
@@ -141,7 +134,6 @@ const Scene = () => {
 					cameraModel.position.set(2, 0.57, 4);
 					cameraModel.scale.set(1.5, 1.5, 1.5);
 
-					// Voeg het camera-model toe aan de scène
 					scene.add(cameraModel);
 
 					console.log("Camera model loaded and added to scene");
@@ -151,10 +143,9 @@ const Scene = () => {
 			);
 		};
 
-		// Laad overige modellen
 		const loadTable = () => {
 			loader.load(
-				"public/Tabel.gltf/Table.gltf", // Zorg ervoor dat het pad correct is
+				"public/Tabel.gltf/Table.gltf",
 				(gltf) => {
 					const table = gltf.scene;
 					table.position.set(2, 0, 4);
@@ -182,7 +173,7 @@ const Scene = () => {
 
 		const loadLamp = () => {
 			loader.load(
-				"public/Lamp/Lamp.gltf", // Zorg ervoor dat het pad correct is
+				"public/Lamp/Lamp.gltf",
 				(gltf) => {
 					const lamp = gltf.scene;
 					lamp.position.set(-2.2, -0.1, 3);
@@ -306,7 +297,7 @@ const Scene = () => {
 			);
 		};
 
-		// Laad alle modellen (maar het huis en de rat zullen alleen een keer geladen worden)
+		// Laad alle modellen
 		loadRat();
 		loadCamera();
 		loadTable();
@@ -347,10 +338,9 @@ const Scene = () => {
 				console.log("Distance to the object:", distance);
 
 				const detectionRange = 9;
-				// Als de afstand kleiner is dan de verhoogde range, een punt toevoegen
+
 				if (distance < detectionRange) {
 					if (clickedObject.name === "Mesh016" || clickedObject.name === "folding_wooden_stool") {
-						// Verberg "Mesh016" en de camera-objecten
 						const cameraObject1 = scene.getObjectByName("Camera_01");
 						const cameraObject2 = scene.getObjectByName("Camera_01_strap");
 
@@ -365,7 +355,7 @@ const Scene = () => {
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Je hebt de camera gevonden!");
 						setObjectsToFind((prevItems) => prevItems.filter((item) => item !== "Fototoestel"));
-					} else if (clickedObject.name === "spray_paint_bottles_02" || clickedObject.name === "spray_paint_bottles_02_dented") {
+					} else if (clickedObject.name === "spray_paint_bottles_02" || clickedObject.name === "spray_paint_bottles_02_dented" || clickedObject.name === "Mesh016_2" || clickedObject.name === "Mesh016_1") {
 						const sprayObject1 = scene.getObjectByName("spray_paint_bottles_02");
 						if (sprayObject1) {
 							sprayObject1.visible = false;
@@ -388,7 +378,7 @@ const Scene = () => {
 						}
 						setPoints((prevPoints) => prevPoints + 1);
 						setMessage("Goed zo! Je hebt de handschoenen gevonden");
-						setObjectsToFind((prevItems) => prevItems.filter((item) => item !== "Handschoen"));
+						setObjectsToFind((prevItems) => prevItems.filter((item) => item !== "Handschoenen"));
 					}
 				}
 			} else {
@@ -409,7 +399,7 @@ const Scene = () => {
 
 		return () => {
 			if (timerRef.current) {
-				clearInterval(timerRef.current); // Timer stoppen bij demontage
+				clearInterval(timerRef.current);
 			}
 		};
 	}, [showStartScreen, showEndScreen]);
@@ -417,14 +407,18 @@ const Scene = () => {
 	return (
 		<>
 			{showStartScreen ? (
-				<div className="start-screen">
-					<h1>Zoek de voorwerpen!</h1>
-					<ul>
-						{objectsToFind.map((item, index) => (
-							<li key={index}>{item}</li>
-						))}
-					</ul>
-					<button onClick={startGame}>Start</button>
+				<div>
+					<div className="start-screen">
+						<h3>De bewoner is vertrokken, maar heeft mysterieuze voorwerpen achtergelaten in het huis. Welke geheimen dragen ze met zich mee? Doorzoek het huis, vind de verborgen voorwerpen, en help hem het mysterie te ontrafelen.</h3>
+						<h1>Zoek de voorwerpen!</h1>
+						<ul>
+							{objectsToFind.map((item, index) => (
+								<li key={index}>{item}</li>
+							))}
+						</ul>
+						<button onClick={startGame}>Start</button>
+					</div>
+					<img src="/public/vergrootglas.png" alt="" />
 				</div>
 			) : showEndScreen ? (
 				<div className="end-screen">
