@@ -12,7 +12,7 @@ npm install
 
 Start the development server:
 ```bash
-npx run
+npx vite
 ```
 
 
